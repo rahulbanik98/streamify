@@ -1,5 +1,5 @@
 const signup = async (request, response) => {
-  response.send("signup");
+  const {email, password, fullName} = request.body;
 };
 
 const login = async (request, response) => {
