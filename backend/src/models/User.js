@@ -30,25 +30,26 @@ const userSchema = new mongoose.Schema(
     friends: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        red: "User",
+        ref: "User",
       },
     ],
   },
   { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-
 userSchema.pre("save", async function (next) {
-  if (this.isModified("password")) return next();
-  
+  if (!this.isModified("password")) return next();
+
   try {
-    const salt = await bcrypt.getSalt(10);
+    const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
     console.log("error--------->", error);
+    next(error); 
   }
 });
+
+const User = mongoose.model("User", userSchema);
 
 export default User;
