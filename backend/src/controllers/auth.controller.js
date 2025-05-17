@@ -1,3 +1,4 @@
+import { upsertStreamUser } from "../lib/stream.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
@@ -34,6 +35,17 @@ const signup = async (request, response) => {
       profilePic: randomAvater,
     });
 
+    try {
+      await upsertStreamUser({
+        id: newUser._id.toString(),
+        name: newUser.fullName,
+        image: newUser.profilePic || "",
+      });
+      console.log(`Stream created id: ${newUser.fullName}`);
+    } catch (error) {
+      console.log("error in stream part");
+    }
+
     const token = jwt.sign(
       { userId: newUser._id },
       process.env.JWT_SECRET_KEY,
@@ -56,11 +68,48 @@ const signup = async (request, response) => {
 };
 
 const login = async (request, response) => {
-  response.send("login");
+  const { email, password } = request.body;
+  try {
+    if (!email && !password) {
+      return response.status(400).json({ message: "All fileds are required" });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return response
+        .status(401)
+        .json({ message: "Invalid Email or Password" });
+    }
+
+    const isPasswordCorrect = await user.matchPassword(password);
+    if (!isPasswordCorrect) {
+      return response
+        .status(401)
+        .json({ message: "Invalid Email or Password" });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: "7d",
+    });
+
+    response.cookie("jwt", token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true, //prevent xss attack
+      sameSite: "strict", //prevent csrf
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    response.status(200).json({ success: true, user });
+  } catch (error) {
+    console.log("Error in login controller", error.message);
+    response.status(500).json({ message: "Internal server error" });
+  }
 };
 
 const logout = async (request, response) => {
-  response.send("logout");
+  response.clearCookie("jwt");
+  response.status(200).json({ sucess: true, message: "Logout succesfully" });
 };
 
 export { signup, login, logout };
