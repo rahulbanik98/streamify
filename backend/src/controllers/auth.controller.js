@@ -112,4 +112,5 @@ const logout = async (request, response) => {
   response.status(200).json({ sucess: true, message: "Logout succesfully" });
 };
 
+
 export { signup, login, logout };
